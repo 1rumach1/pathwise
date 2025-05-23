@@ -1,0 +1,108 @@
+/* Map Styles */
+.map-container {
+  height: 40vh;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
+
+/* Map marker popup styles */
+.leaflet-popup-content {
+  font-family: var(--font-family);
+  padding: var(--space-xs);
+}
+
+.marker-popup h3 {
+  color: var(--primary);
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-xs);
+}
+
+.marker-popup p {
+  color: var(--text-medium);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.marker-popup .time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-medium);
+}
+
+.marker-popup .time svg {
+  height: 12px;
+  width: 12px;
+  fill: var(--text-medium);
+}
+
+.marker-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-sm);
+}
+
+.marker-actions button {
+  font-size: var(--font-size-xs);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* Location selection map (for adding tasks) */
+#location-select-map {
+  height: 200px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-sm);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Custom marker styles */
+.home-marker {
+  background-color: var(--accent);
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+.task-marker {
+  background-color: var(--primary);
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+/* Route style overrides */
+.leaflet-routing-container {
+  display: none; /* Hide the routing text instructions */
+}
+
+.leaflet-routing-alt {
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .map-container {
+    height: 30vh;
+  }
+}
+
+@media (min-width: 1200px) {
+  .map-container {
+    height: 50vh;
+  }
+}
