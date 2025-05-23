@@ -28,6 +28,7 @@
   margin: 0;
   color: var(--primary);
   font-weight: 700;
+  text-transform: capitalize;
 }
 
 .nav-controls {
@@ -85,15 +86,15 @@
   .navbar {
     padding: var(--space-sm);
   }
-  
+
   .search-container {
     width: 160px;
   }
-  
+
   .logo h1 {
     font-size: var(--font-size-md);
   }
-  
+
   #add-task-btn {
     padding: var(--space-xs) var(--space-sm);
     font-size: var(--font-size-sm);
