@@ -20,9 +20,7 @@ Imagine a to-do list that not only reminds you **what** to do, but also **where*
 - ✅ Add tasks with location and schedule
 - 📍 View optimized route from your current position
 - 🧭 Location-aware task sequencing
-- 🔄 Auto-update routes as you move
-- 🔔 Task alerts based on location & time
-
+  
 ---
 
 ## 🎯 Why Use Pathwise?
@@ -64,11 +62,7 @@ Whether you're a student, a busy professional, or someone who just wants their d
 
 ## 🧭 Roadmap
 
-- 🚶 Mode options: Walk, Drive, Transit
-- 📆 Google Calendar sync
-- 🗣️ Voice-based task entry
-- 🌐 Offline route caching
-
+- 🚶 Mode options: Drive
 ---
 
 ## 👥 Contributing
