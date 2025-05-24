@@ -35,7 +35,8 @@ Whether you're a student, a busy professional, or someone who just wants their d
 
 ## 📸 Sneak Peek
 
-pathwise/Screenshot 2025-05-24 135927.png
+![Pathwise Screenshot](pathwise/screenshot.png)
+
 *Path visualization and smart scheduling in action.*
 
 ---
