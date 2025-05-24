@@ -1,0 +1,1 @@
+Pathwise is a personal event secretary that allows you to schedule task and set locations where they will be done. It will show you the shortest path from your current location towards the sequence of events that needs to be done
