@@ -1,3 +1,4 @@
+// MapManager: Handles map initialization and interactions
 export class MapManager {
   constructor(mapId, locationSelectMapId, homeLocation) {
     this.mapId = mapId;
@@ -8,64 +9,39 @@ export class MapManager {
     this.markers = [];
     this.routes = [];
     this.selectedLocation = null;
-    this.transportMode = "auto";
 
     this.initMap();
-    this.initTransportControls();
-    this.initLocationSelectMap();
   }
 
+  // Initialize the main map
   initMap() {
+    // Create the main map
     this.map = L.map(this.mapId).setView(
       [this.homeLocation.lat, this.homeLocation.lng],
       13
     );
 
+    // Add OpenStreetMap tiles
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.map);
 
-    const transportControl = L.control({ position: "topright" });
-    transportControl.onAdd = () => {
-      const div = L.DomUtil.create(
-        "div",
-        "transport-control leaflet-bar leaflet-control"
-      );
-      div.innerHTML = `
-        <select id="transport-mode" class="transport-select">
-          <option value="auto">Car</option>
-          <option value="bicycle">Bike</option>
-          <option value="pedestrian">Walk</option>
-        </select>
-      `;
-      return div;
-    };
-    transportControl.addTo(this.map);
-
+    // Add home marker
     this.addHomeMarker();
+
+    // Initialize the location selection map when modal is opened
+    document.getElementById("add-task-btn").addEventListener("click", () => {
+      // Small delay to ensure modal is visible
+      setTimeout(() => this.initLocationSelectMap(), 100);
+    });
   }
 
-  initTransportControls() {
-    document
-      .getElementById("transport-mode")
-      .addEventListener("change", (e) => {
-        this.clearRoutes();
-        this.transportMode = e.target.value;
-        if (window.taskManager) {
-          this.updateRoutes(window.taskManager.getTodayTasks());
-        }
-      });
-  }
-
+  // Initialize the location selection map
   initLocationSelectMap() {
     if (this.locationSelectMap) {
-      this.locationSelectMap.invalidateSize();
-      return this.locationSelectMap;
+      this.locationSelectMap.remove();
     }
-
-    const container = document.getElementById(this.locationSelectMapId);
-    if (!container) return null;
 
     this.locationSelectMap = L.map(this.locationSelectMapId).setView(
       [this.homeLocation.lat, this.homeLocation.lng],
@@ -77,13 +53,16 @@ export class MapManager {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.locationSelectMap);
 
+    // Add click event to select location
     this.locationSelectMap.on("click", (e) => {
       this.selectLocationOnMap(e.latlng);
     });
 
-    return this.locationSelectMap;
+    // Fix for map rendering issues in modal
+    this.locationSelectMap.invalidateSize();
   }
 
+  // Add home marker to the map
   addHomeMarker() {
     const homeIcon = L.divIcon({
       className: "home-marker",
@@ -92,68 +71,27 @@ export class MapManager {
       iconAnchor: [16, 32],
     });
 
+    // Add marker to map
     const marker = L.marker([this.homeLocation.lat, this.homeLocation.lng], {
       icon: homeIcon,
     }).addTo(this.map);
 
+    // Add popup
     marker.bindPopup(
       '<div class="marker-popup"><h3>Home</h3><p>Starting point for all routes</p></div>'
     );
   }
 
-  decodePolyline(str, precision) {
-    precision = Math.pow(10, -precision);
-    var coordinates = [];
-    var index = 0;
-    var lat = 0;
-    var lng = 0;
-
-    while (index < str.length) {
-      var result = 1;
-      var shift = 0;
-      var b;
-      do {
-        b = str.charCodeAt(index++) - 63 - 1;
-        result += b << shift;
-        shift += 5;
-      } while (b >= 0x1f);
-      lat += (result & 1 ? ~(result >> 1) : result >> 1) * precision;
-
-      result = 1;
-      shift = 0;
-      do {
-        b = str.charCodeAt(index++) - 63 - 1;
-        result += b << shift;
-        shift += 5;
-      } while (b >= 0x1f);
-      lng += (result & 1 ? ~(result >> 1) : result >> 1) * precision;
-
-      coordinates.push([lat, lng]);
-    }
-    return coordinates;
-  }
-
+  // Update task markers on the map
   updateTaskMarkers(tasks) {
     // Clear existing markers
     this.clearMarkers();
 
-    // Sort tasks by start time
-    const sortedTasks = [...tasks].sort((a, b) => a.startTime - b.startTime);
-
-    // Find all completed tasks
-    const completedTasks = sortedTasks.filter((task) => task.completed);
-    const uncompletedTasks = sortedTasks.filter((task) => !task.completed);
-
-    // Add markers for completed tasks first
-    completedTasks.forEach((task) => {
-      this.addCompletedTaskMarker(task);
-    });
-
-    // Add markers for uncompleted tasks
-    uncompletedTasks.forEach((task, index) => {
+    // Add markers for each task
+    tasks.forEach((task, index) => {
       const taskIcon = L.divIcon({
-        className: "task-marker",
-        html: `<span>${index + 1}</span>`,
+        className: task.completed ? "completed-marker" : "task-marker",
+        html: task.completed ? "✓" : `<span>${index + 1}</span>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
@@ -216,16 +154,14 @@ export class MapManager {
       });
     });
 
-    // Fit map to all markers and home location
-    const allPoints = [
-      [this.homeLocation.lat, this.homeLocation.lng],
-      ...tasks.map((task) => [task.location.lat, task.location.lng]),
-    ];
-
-    if (allPoints.length > 1) {
-      this.map.fitBounds(allPoints, { padding: [50, 50] });
+    // Fit map to markers if there are any
+    if (tasks.length > 0) {
+      const bounds = [
+        [this.homeLocation.lat, this.homeLocation.lng],
+        ...tasks.map((task) => [task.location.lat, task.location.lng]),
+      ];
+      this.map.fitBounds(bounds, { padding: [50, 50] });
     } else {
-      // If no points (or just home), center on home location
       this.map.setView([this.homeLocation.lat, this.homeLocation.lng], 13);
     }
   }
@@ -238,70 +174,6 @@ export class MapManager {
     this.markers = [];
   }
 
-  // Add a marker for the last completed task
-  addCompletedTaskMarker(task) {
-    console.log("Adding completed task marker for:", task); // Debug log
-
-    const completedIcon = L.divIcon({
-      className: "completed-marker",
-      html: `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-                <path fill="none" d="M0 0h24v24H0z"/>
-                <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-.997-4L6.76 11.757l1.414-1.414 2.829 2.829 5.656-5.657 1.415 1.414L11.003 16z" fill="white"/>
-              </svg>
-            </div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-    });
-
-    if (
-      !task.location ||
-      typeof task.location.lat !== "number" ||
-      typeof task.location.lng !== "number"
-    ) {
-      console.error("Invalid task location:", task.location); // Debug log
-      return;
-    }
-
-    const marker = L.marker([task.location.lat, task.location.lng], {
-      icon: completedIcon,
-    }).addTo(this.map);
-
-    console.log("Completed task marker added at:", task.location); // Debug log
-
-    // Format time
-    const startTime = task.startTime.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const endTime = task.endTime.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    // Create popup content
-    const popupContent = `
-      <div class="marker-popup">
-        <h3>${task.title}</h3>
-        <p>${task.description}</p>
-        <div class="time">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14">
-            <path fill="none" d="M0 0h24v24H0z"/>
-            <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-8h4v2h-6V7h2v5z"/>
-          </svg>
-          ${startTime} - ${endTime} (Completed)
-        </div>
-      </div>
-    `;
-
-    marker.bindPopup(popupContent);
-    this.markers.push(marker);
-    console.log(
-      "Total markers after adding completed task:",
-      this.markers.length
-    ); // Debug log
-  }
-
   // Update routes on the map
   updateRoutes(tasks) {
     // Clear existing routes
@@ -310,124 +182,81 @@ export class MapManager {
     // If no tasks, exit
     if (tasks.length === 0) return;
 
-    // Sort tasks by start time
+    // Sort all tasks by start time
     const sortedTasks = [...tasks].sort((a, b) => a.startTime - b.startTime);
 
-    // Get uncompleted tasks
-    const uncompletedTasks = sortedTasks.filter((task) => !task.completed);
-    if (uncompletedTasks.length === 0) {
-      // All tasks completed, no routes to show
-      return;
-    }
-
-    // Find the last completed task to use as starting point
+    // Find last completed task (if any)
     const lastCompletedTask = [...sortedTasks]
       .reverse()
       .find((task) => task.completed);
 
-    // Determine starting point
-    const startPoint = lastCompletedTask
-      ? [lastCompletedTask.location.lng, lastCompletedTask.location.lat]
-      : [this.homeLocation.lng, this.homeLocation.lat];
+    // Get uncompleted tasks that are after the last completed task
+    const uncompletedTasks = sortedTasks.filter((task) => !task.completed);
 
-    // Create route segments starting from current position
-    const routeSegments = [];
-    let previousPoint = startPoint;
-
-    // Create segments only for uncompleted tasks
-    uncompletedTasks.forEach((task) => {
-      routeSegments.push([
-        previousPoint,
-        [task.location.lng, task.location.lat],
-      ]);
-      previousPoint = [task.location.lng, task.location.lat];
-    });
-
-    // Fetch and draw each route segment
-    routeSegments.forEach((coordinates) => {
-      fetch(
-        "https://api.openrouteservice.org/v2/directions/" +
-          this.getOrsProfile(),
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization:
-              "5b3ce3597851110001cf6248377240f3c70c449281c08a64f445837c",
-          },
-          body: JSON.stringify({
-            coordinates: coordinates,
-            instructions: false,
-            preference: "shortest",
-          }),
-        }
-      )
-        .then(async (response) => {
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error("OpenRouteService Error Response:", errorData);
-            throw new Error(errorData.error || "Route calculation failed");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          if (!data.routes?.[0]?.geometry) {
-            console.error("No geometry in route:", data);
-            return;
-          }
-
-          // Decode and draw the route segment
-          const decodedGeometry = this.decodePolyline(
-            data.routes[0].geometry,
-            5
-          );
-          const routeColor = this.getRouteColor();
-          const route = L.polyline(decodedGeometry, {
-            color: routeColor,
-            weight: 6,
-            opacity: 0.8,
-          }).addTo(this.map);
-
-          this.routes.push(route);
-        })
-        .catch((error) => {
-          console.error("Failed to get route:", error);
-        });
-    });
-  }
-
-  // Get OpenRouteService profile based on transport mode
-  getOrsProfile() {
-    console.log("Current transport mode:", this.transportMode); // Debug log
-    switch (this.transportMode) {
-      case "bicycle":
-        return "cycling-regular";
-      case "pedestrian":
-        return "foot-walking";
-      case "auto":
-      default:
-        return "driving-car";
+    // If all tasks are completed, show route from last task to home
+    if (uncompletedTasks.length === 0) {
+      if (lastCompletedTask) {
+        const waypoints = [
+          L.latLng(
+            lastCompletedTask.location.lat,
+            lastCompletedTask.location.lng
+          ),
+          L.latLng(this.homeLocation.lat, this.homeLocation.lng),
+        ];
+        this.createRoute(waypoints);
+      }
+      return;
     }
+
+    // Create waypoints starting from last completed task (or home) to next tasks
+    const startPoint = lastCompletedTask
+      ? L.latLng(lastCompletedTask.location.lat, lastCompletedTask.location.lng)
+      : L.latLng(this.homeLocation.lat, this.homeLocation.lng);
+
+    const waypoints = [
+      startPoint,
+      ...uncompletedTasks.map((task) =>
+        L.latLng(task.location.lat, task.location.lng)
+      ),
+    ];
+
+    // Create route for remaining tasks
+    this.createRoute(waypoints);
   }
 
-  // Get route color based on transport mode
-  getRouteColor() {
-    switch (this.transportMode) {
-      case "bicycle":
-        return "#2ecc71"; // Green for bike
-      case "pedestrian":
-        return "#e74c3c"; // Red for walking
-      case "auto":
-      default:
-        return "#3498db"; // Blue for car
+  // Helper method to create a route between waypoints
+  createRoute(waypoints) {
+    if (waypoints.length >= 2) {
+      const routeControl = L.Routing.control({
+        waypoints: waypoints,
+        routeWhileDragging: false,
+        showAlternatives: false,
+        fitSelectedRoutes: false,
+        lineOptions: {
+          styles: [
+            { color: "#3498db", opacity: 0.8, weight: 6 },
+            { color: "white", opacity: 0.3, weight: 2 },
+          ],
+        },
+        createMarker: () => null, // Don't create markers as we already have them
+      }).addTo(this.map);
+
+      // Hide the instructions container
+      routeControl.on("routesfound", function (e) {
+        const container = document.querySelector(".leaflet-routing-container");
+        if (container) {
+          container.style.display = "none";
+        }
+      });
+
+      this.routes.push(routeControl);
     }
   }
 
   // Clear all routes from the map
   clearRoutes() {
     this.routes.forEach((route) => {
-      this.map.removeLayer(route);
+      this.map.removeControl(route);
     });
     this.routes = [];
   }
@@ -438,9 +267,6 @@ export class MapManager {
     locationName = "Custom Location",
     isPredefined = false
   ) {
-    // Initialize map if not initialized
-    this.initLocationSelectMap();
-
     // Clear any existing markers
     if (this.selectedLocationMarker) {
       this.locationSelectMap.removeLayer(this.selectedLocationMarker);
@@ -458,17 +284,26 @@ export class MapManager {
       lng: latlng.lng,
     };
 
-    // Only dispatch event for custom locations
-    if (!isPredefined) {
-      const locationSelect = document.getElementById("task-location");
-      locationSelect.value = "";
+    // Get location dropdown
+    const locationSelect = document.getElementById("task-location");
 
-      // Dispatch custom event for manual selection
-      const event = new CustomEvent("locationSelected", {
-        detail: { location: this.selectedLocation },
-      });
-      document.dispatchEvent(event);
+    // For predefined locations, keep the dropdown value
+    // For custom locations (map clicks), clear the dropdown
+    if (!isPredefined) {
+      locationSelect.value = "";
     }
+
+    // Always notify about location selection
+    const event = new CustomEvent("locationSelected", {
+      detail: {
+        location: this.selectedLocation,
+        isCustom: !isPredefined,
+      },
+    });
+    document.dispatchEvent(event);
+
+    // Center map on selected location
+    this.locationSelectMap.setView(latlng, this.locationSelectMap.getZoom());
   }
 
   // Get the selected location
@@ -476,12 +311,30 @@ export class MapManager {
     return this.selectedLocation;
   }
 
-  // Reset the selected location
+  // Reset the selected location and all related UI
   resetSelectedLocation() {
+    // Reset internal state
     this.selectedLocation = null;
+
+    // Clear marker if it exists
     if (this.selectedLocationMarker && this.locationSelectMap) {
       this.locationSelectMap.removeLayer(this.selectedLocationMarker);
       this.selectedLocationMarker = null;
     }
+
+    // Reset dropdown if it exists
+    const locationSelect = document.getElementById("task-location");
+    if (locationSelect) {
+      locationSelect.value = "";
+    }
+
+    // Notify that location has been reset
+    const event = new CustomEvent("locationSelected", {
+      detail: {
+        location: null,
+        isReset: true,
+      },
+    });
+    document.dispatchEvent(event);
   }
 }

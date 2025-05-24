@@ -91,17 +91,16 @@ export class UIManager {
       .getElementById("delete-task")
       .addEventListener("click", () => this.deleteCurrentTask());
 
-    // Location selection
+    // Location dropdown selection
     document.getElementById("task-location").addEventListener("change", (e) => {
       const locationId = e.target.value;
       if (locationId) {
         const location = this.locations.find((loc) => loc.id === locationId);
         if (location) {
+          // Update both internal state and map marker
           this.selectedLocation = location;
-          // Add marker for selected predefined location
           const latlng = { lat: location.lat, lng: location.lng };
-          this.mapManager.selectLocationOnMap(latlng, location.name, true); // true indicates predefined location
-          // Pan the map to the selected location
+          this.mapManager.selectLocationOnMap(latlng, location.name, true);
           this.mapManager.locationSelectMap.setView(latlng, 15);
         }
       } else {
@@ -109,11 +108,30 @@ export class UIManager {
       }
     });
 
-    // Custom location selection
+    // Handle location selection events (from map or dropdown)
     document.addEventListener("locationSelected", (e) => {
-      this.selectedLocation = e.detail.location;
-      const locationSelect = document.getElementById("task-location");
-      locationSelect.value = "";
+      if (e.detail.isReset) {
+        // Handle location reset
+        this.selectedLocation = null;
+      } else {
+        // Update internal state with new location
+        this.selectedLocation = e.detail.location;
+
+        // Update dropdown only for predefined locations
+        const locationSelect = document.getElementById("task-location");
+        if (!e.detail.isCustom) {
+          const locationMatch = this.locations.find(
+            (loc) =>
+              loc.lat === e.detail.location.lat &&
+              loc.lng === e.detail.location.lng
+          );
+          if (locationMatch) {
+            locationSelect.value = locationMatch.id;
+          }
+        } else {
+          locationSelect.value = "";
+        }
+      }
     });
 
     // Show task details from map marker
@@ -285,11 +303,9 @@ export class UIManager {
     // Render tasks for the selected view
     this.renderTasks();
 
-    // Update map for today view - only show unfinished tasks on map
+    // Update map for today view - show all tasks including completed ones
     if (view === "today") {
-      const tasksForMap = this.taskManager
-        .getTodayTasks()
-        .filter((task) => !task.completed);
+      const tasksForMap = this.taskManager.getTodayTasks();
       this.mapManager.updateTaskMarkers(tasksForMap);
       this.mapManager.updateRoutes(tasksForMap);
     } else {
@@ -342,9 +358,8 @@ export class UIManager {
 
     // Update map if we're in today view
     if (this.currentView === "today") {
-      const tasksForMap = tasks.filter((task) => !task.completed);
-      this.mapManager.updateTaskMarkers(tasksForMap);
-      this.mapManager.updateRoutes(tasksForMap);
+      this.mapManager.updateTaskMarkers(tasks);
+      this.mapManager.updateRoutes(tasks);
     }
   }
 
